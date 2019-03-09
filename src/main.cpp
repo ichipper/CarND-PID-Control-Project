@@ -4,6 +4,7 @@
 #include <string>
 #include "json.hpp"
 #include "PID.h"
+#include "PIDOptimizer.h"
 
 // for convenience
 using nlohmann::json;
@@ -37,8 +38,20 @@ int main() {
   /**
    * TODO: Initialize the pid variable.
    */
+  //pid.Init(0.1,  0.00001, 0.75);
 
-  h.onMessage([&pid](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, 
+  PIDOptimizer pid_op(&pid);
+  //pid_op.Initialize(0.09, 0.00001, 0.75, 0.01, 0.000001, 0.05);
+  //pid_op.Initialize(0.09, 0.000011, 0.75, 0.01, 0.000001, 0.05);
+  pid_op.Initialize(0.1, 0.00001, 0.70, 0.0, 0.00000, 0.0);
+  //0.1, 0.00001, 0.7
+  //pid_op.Initialize(0.11, 0.000011, 0.75, 0.0, 0.0, 0.0);
+  pid.ShowParameters();
+  //vector<double> p = {0.0, 0.0, 0.0};
+  //vector<double> dp = {1.0, 1.0, 1.0};
+  int N=0;
+  
+  h.onMessage([&pid, &pid_op, &N ](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, 
                      uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
@@ -63,8 +76,19 @@ int main() {
            * NOTE: Feel free to play around with the throttle and speed.
            *   Maybe use another PID controller to control the speed!
            */
+          if (cte > 5.0 || cte < -5.0) {
+           pid_op.ShowBestParameters(); 
+           return 0;
+          }
+
+          pid.UpdateError(cte);
+          steer_value = pid.TotalError();
+          pid.ShowParameters();
+          //pid_op.Twiddle(cte);
           
           // DEBUG
+          N++;
+          std::cout << "N=" << N << std::endl;
           std::cout << "CTE: " << cte << " Steering Value: " << steer_value 
                     << std::endl;
 
